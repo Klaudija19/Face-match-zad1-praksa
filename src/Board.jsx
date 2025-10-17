@@ -24,6 +24,19 @@ export default function Board({ difficulty, onRestart }) {
     }
   };
 
+  const getTimeLimit = () => {
+    switch (difficulty) {
+      case "easy":
+        return 30;
+      case "medium":
+        return 45;
+      case "hard":
+        return 60;
+      default:
+        return 30;
+    }
+  };
+
   const generateCards = () => {
     const pairs = imageList.slice(0, getNumberOfPairs());
     const cards = [...pairs, ...pairs]
@@ -40,9 +53,29 @@ export default function Board({ difficulty, onRestart }) {
   const [cards, setCards] = useState(generateCards());
   const [flippedCards, setFlippedCards] = useState([]);
   const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(getTimeLimit());
+  const [gameOver, setGameOver] = useState(false);
+  const [message, setMessage] = useState("");
 
+  // 🕓 Countdown Timer
+  useEffect(() => {
+    if (gameOver) return;
+    if (timeLeft <= 0) {
+      setGameOver(true);
+      setMessage("⏰ Time’s up!");
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setTimeLeft((t) => t - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [timeLeft, gameOver]);
+
+  // 🧩 Handle flipping logic
   const handleCardClick = (card) => {
-    if (flippedCards.length === 2) return;
+    if (flippedCards.length === 2 || gameOver) return;
 
     const newCards = cards.map((c) =>
       c.id === card.id ? { ...c, flipped: true } : c
@@ -52,6 +85,7 @@ export default function Board({ difficulty, onRestart }) {
     setFlippedCards(newFlipped);
   };
 
+  // 🧠 Matching logic
   useEffect(() => {
     if (flippedCards.length === 2) {
       const [first, second] = flippedCards;
@@ -73,28 +107,43 @@ export default function Board({ difficulty, onRestart }) {
             )
           );
           setFlippedCards([]);
-        }, 1000);
+        }, 800);
       }
     }
   }, [flippedCards]);
 
+  // 🏁 Check win condition
+  useEffect(() => {
+    if (cards.length > 0 && cards.every((c) => c.matched)) {
+      setGameOver(true);
+      setMessage("🎉 You Win!");
+    }
+  }, [cards]);
+
   return (
     <div className="vh-100 vw-100 d-flex flex-column justify-content-center align-items-center bg-dark text-white">
-      <h2 className="mb-3 text-capitalize">{difficulty} Mode</h2>
-      <h5 className="mb-4">Score: {score}</h5>
+      <h2 className="mb-2 text-capitalize">{difficulty} Mode</h2>
+      <h5 className="mb-1">Score: {score}</h5>
+      <h6 className="text-warning mb-4">Time Left: {timeLeft}s</h6>
 
-      <div
-        className="d-grid gap-3"
-        style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-          width: "80%",
-          maxWidth: "600px",
-        }}
-      >
-        {cards.map((card) => (
-          <Card key={card.id} card={card} onClick={handleCardClick} />
-        ))}
-      </div>
+      {!gameOver ? (
+        <div
+          className="d-grid gap-3"
+          style={{
+            gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
+            width: "80%",
+            maxWidth: "600px",
+          }}
+        >
+          {cards.map((card) => (
+            <Card key={card.id} card={card} onClick={handleCardClick} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center mt-5">
+          <h3>{message}</h3>
+        </div>
+      )}
 
       <button className="btn btn-light mt-5 px-4 py-2" onClick={onRestart}>
         🔙 Back to Menu
@@ -102,3 +151,4 @@ export default function Board({ difficulty, onRestart }) {
     </div>
   );
 }
+
